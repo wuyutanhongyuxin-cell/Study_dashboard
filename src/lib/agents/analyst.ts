@@ -1,18 +1,9 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { db } from '@/lib/db';
 import { studySessions, dailyProgress } from '@/lib/db/schema';
 import { desc, gte } from 'drizzle-orm';
-
-function getClient() {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY is not configured');
-  }
-  return new Anthropic({ apiKey });
-}
+import { generateText } from '@/lib/ai/client';
 
 export async function runAnalyst() {
-  const client = getClient();
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const dateStr = sevenDaysAgo.toISOString().slice(0, 10);
@@ -59,13 +50,10 @@ ${JSON.stringify(progress, null, 2)}
 
 如果数据为空，请基于空数据返回合理的默认值（0小时，无趋势等）。`;
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 2000,
+  const text = await generateText({
     messages: [{ role: 'user', content: prompt }],
+    maxTokens: 2000,
   });
-
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
 
   try {
     return JSON.parse(text);

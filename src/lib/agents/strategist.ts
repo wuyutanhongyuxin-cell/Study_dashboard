@@ -1,15 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
-
-function getClient() {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY is not configured');
-  }
-  return new Anthropic({ apiKey });
-}
+import { generateText } from '@/lib/ai/client';
 
 export async function runStrategist(analysisData: Record<string, unknown>) {
-  const client = getClient();
   const prompt = `你是一个考研学习策略规划师。基于以下学习数据分析结果，请为学生制定明天和本周的学习计划。
 
 分析数据：
@@ -49,13 +40,10 @@ ${JSON.stringify(analysisData, null, 2)}
   "adjustments": ["<基于分析的调整建议>"]
 }`;
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 2000,
+  const text = await generateText({
     messages: [{ role: 'user', content: prompt }],
+    maxTokens: 2000,
   });
-
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
 
   try {
     return JSON.parse(text);

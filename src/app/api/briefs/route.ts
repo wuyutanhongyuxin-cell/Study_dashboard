@@ -3,8 +3,9 @@ import { db } from '@/lib/db';
 import { morningBriefs } from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import { generateBrief } from '@/lib/briefs/generator';
-import { validateAnthropicApiKey } from '@/lib/anthropic/auth';
-import { isAnthropicAuthError } from '@/lib/anthropic/errors';
+import { validateConfiguredProvider } from '@/lib/ai/auth';
+import { getConfiguredProvider } from '@/lib/ai/config';
+import { getAIErrorMessage, isAIAuthError } from '@/lib/ai/errors';
 
 export const runtime = 'nodejs';
 
@@ -25,16 +26,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'date is required' }, { status: 400 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  try {
+    getConfiguredProvider();
+  } catch (error) {
     return NextResponse.json(
-      { error: 'ANTHROPIC_API_KEY is not configured' },
+      { error: getAIErrorMessage(error) },
       { status: 503 }
     );
   }
 
   try {
-    await validateAnthropicApiKey(apiKey);
+    await validateConfiguredProvider();
     await generateBrief(date);
     const brief = db
       .select()
@@ -44,14 +46,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(brief);
   } catch (error: unknown) {
-    if (isAnthropicAuthError(error)) {
+    if (isAIAuthError(error)) {
       return NextResponse.json(
-        { error: 'ANTHROPIC_API_KEY is invalid' },
+        { error: 'AI provider credential is invalid' },
         { status: 503 }
       );
     }
 
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: getAIErrorMessage(error) }, { status: 500 });
   }
 }

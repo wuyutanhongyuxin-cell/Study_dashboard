@@ -1,15 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
-
-function getClient() {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY is not configured');
-  }
-  return new Anthropic({ apiKey });
-}
+import { generateText } from '@/lib/ai/client';
 
 export async function runCoach(analysisData: Record<string, unknown>) {
-  const client = getClient();
   const prompt = `你是一位温暖而专业的考研学习教练。请基于以下学习数据分析结果，用中文为学生提供个性化的激励反馈。
 
 分析数据：
@@ -24,12 +15,8 @@ ${JSON.stringify(analysisData, null, 2)}
 
 请直接返回中文文本（markdown格式），不需要JSON格式。`;
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 1500,
+  return generateText({
     messages: [{ role: 'user', content: prompt }],
+    maxTokens: 1500,
   });
-
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
-  return text;
 }
