@@ -4,9 +4,16 @@ import { agentReports, morningBriefs, dailyProgress } from '@/lib/db/schema';
 import { eq, gte } from 'drizzle-orm';
 import { format, subDays } from 'date-fns';
 
-const client = new Anthropic();
+function getClient() {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error('ANTHROPIC_API_KEY is not configured');
+  }
+  return new Anthropic({ apiKey });
+}
 
 export async function generateBrief(date: string): Promise<string> {
+  const client = getClient();
   // Fetch agent reports for this date
   const reports = db
     .select()
@@ -80,6 +87,13 @@ ${coachReport ? `### 教练反馈\n${coachReport.content}` : '暂无教练反馈
       date,
       content,
       metrics: JSON.stringify(metrics),
+    })
+    .onConflictDoUpdate({
+      target: morningBriefs.date,
+      set: {
+        content,
+        metrics: JSON.stringify(metrics),
+      },
     })
     .run();
 

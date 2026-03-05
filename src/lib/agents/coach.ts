@@ -1,8 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+function getClient() {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error('ANTHROPIC_API_KEY is not configured');
+  }
+  return new Anthropic({ apiKey });
+}
 
 export async function runCoach(analysisData: Record<string, unknown>) {
+  const client = getClient();
   const prompt = `你是一位温暖而专业的考研学习教练。请基于以下学习数据分析结果，用中文为学生提供个性化的激励反馈。
 
 分析数据：

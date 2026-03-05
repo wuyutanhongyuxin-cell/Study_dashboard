@@ -93,6 +93,7 @@ function SidebarContent() {
 
 export function Sidebar() {
   const [isMobile, setIsMobile] = useState(false);
+  const sidebarOpen = useAppStore((s) => s.sidebarOpen);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -119,7 +120,7 @@ export function Sidebar() {
   return (
     <aside className={cn(
       'hidden md:flex flex-col h-screen sticky top-0 transition-all duration-300',
-      useAppStore.getState().sidebarOpen ? 'w-56' : 'w-16'
+      sidebarOpen ? 'w-56' : 'w-16'
     )}>
       <SidebarContent />
     </aside>

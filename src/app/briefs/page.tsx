@@ -16,6 +16,15 @@ interface Brief {
   metrics: string | null;
 }
 
+function safeParseMetrics(raw: string | null | undefined) {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 export default function BriefsPage() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [brief, setBrief] = useState<Brief | null>(null);
@@ -66,7 +75,7 @@ export default function BriefsPage() {
     setGenerating(false);
   }
 
-  const metrics = brief?.metrics ? JSON.parse(brief.metrics) : null;
+  const metrics = safeParseMetrics(brief?.metrics);
 
   return (
     <div className="space-y-6">

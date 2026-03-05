@@ -16,16 +16,10 @@ function formatTime(seconds: number): string {
 
 export function Header() {
   const { theme, setTheme } = useTheme();
-  const { timer, tickTimer } = useAppStore();
+  const timer = useAppStore((s) => s.timer);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
-
-  useEffect(() => {
-    if (!timer.isRunning) return;
-    const interval = setInterval(tickTimer, 1000);
-    return () => clearInterval(interval);
-  }, [timer.isRunning, tickTimer]);
 
   const subjectName = timer.subject
     ? SUBJECTS.find((s) => s.id === timer.subject)?.name

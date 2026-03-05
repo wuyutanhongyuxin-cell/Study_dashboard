@@ -7,11 +7,16 @@ export const runtime = 'nodejs';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
-  const { id } = await params;
+  const { id } = params;
   const body = await request.json();
   const { status } = body;
+  const nodeId = Number.parseInt(id, 10);
+
+  if (!Number.isInteger(nodeId) || nodeId <= 0) {
+    return NextResponse.json({ error: 'Invalid node id' }, { status: 400 });
+  }
 
   const validStatuses = ['not_started', 'learning', 'reviewing', 'mastered'];
   if (!validStatuses.includes(status)) {
@@ -21,12 +26,12 @@ export async function PATCH(
   await db
     .update(knowledgeNodes)
     .set({ status })
-    .where(eq(knowledgeNodes.id, parseInt(id)));
+    .where(eq(knowledgeNodes.id, nodeId));
 
   const [updated] = await db
     .select()
     .from(knowledgeNodes)
-    .where(eq(knowledgeNodes.id, parseInt(id)));
+    .where(eq(knowledgeNodes.id, nodeId));
 
   return NextResponse.json(updated);
 }

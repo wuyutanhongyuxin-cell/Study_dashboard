@@ -11,10 +11,18 @@ const SYSTEM_PROMPT = `你是 Desheng 的考研 AI 督学助手。Desheng 是上
 export async function POST(req: NextRequest) {
   try {
     const { conversationId, message } = await req.json();
+    const apiKey = process.env.ANTHROPIC_API_KEY;
 
     if (!message || typeof message !== 'string') {
       return new Response(JSON.stringify({ error: 'Message is required' }), {
         status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY is not configured' }), {
+        status: 503,
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -59,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     // Create Anthropic client
     const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
+      apiKey,
     });
 
     // Stream response
@@ -68,6 +76,27 @@ export async function POST(req: NextRequest) {
 
     const stream = new ReadableStream({
       async start(controller) {
+        let finalized = false;
+        const finalize = async (assistantText?: string) => {
+          if (finalized) return;
+          finalized = true;
+
+          if (assistantText && assistantText.trim().length > 0) {
+            try {
+              await db.insert(chatMessages).values({
+                conversationId: convId,
+                role: 'assistant',
+                content: assistantText,
+              });
+            } catch (dbError) {
+              console.error('Failed to save assistant message:', dbError);
+            }
+          }
+
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+        };
+
         try {
           // Send conversationId first so the client knows which conversation
           if (!conversationId) {
@@ -95,35 +124,30 @@ export async function POST(req: NextRequest) {
           });
 
           messageStream.on('end', async () => {
-            // Save the complete assistant message
-            await db.insert(chatMessages).values({
-              conversationId: convId,
-              role: 'assistant',
-              content: fullResponse,
-            });
-
-            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-            controller.close();
+            await finalize(fullResponse);
           });
 
-          messageStream.on('error', (error) => {
+          messageStream.on('error', async (error) => {
             console.error('Anthropic stream error:', error);
+            const fallback = '\n\n[请求出错，请重试]';
+            fullResponse = fullResponse || fallback;
             controller.enqueue(
               encoder.encode(
-                `data: ${JSON.stringify({ token: '\n\n[请求出错，请重试]' })}\n\n`
+                `data: ${JSON.stringify({ token: fallback })}\n\n`
               )
             );
-            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-            controller.close();
+            await finalize(fullResponse);
           });
         } catch (error) {
           console.error('Stream setup error:', error);
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({ error: 'Failed to create stream' })}\n\n`
-            )
-          );
-          controller.close();
+          if (!finalized) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ error: 'Failed to create stream' })}\n\n`
+              )
+            );
+            controller.close();
+          }
         }
       },
     });

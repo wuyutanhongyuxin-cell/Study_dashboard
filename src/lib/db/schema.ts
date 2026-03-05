@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 
 export const studySessions = sqliteTable('study_sessions', {
@@ -7,7 +8,7 @@ export const studySessions = sqliteTable('study_sessions', {
   endTime: text('end_time'),
   duration: integer('duration'), // minutes
   notes: text('notes'),
-  createdAt: text('created_at').notNull().default("(datetime('now'))"),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
 
 export const dailyProgress = sqliteTable('daily_progress', {
@@ -26,8 +27,8 @@ export const dailyProgress = sqliteTable('daily_progress', {
 export const chatConversations = sqliteTable('chat_conversations', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   title: text('title').notNull().default('新对话'),
-  createdAt: text('created_at').notNull().default("(datetime('now'))"),
-  updatedAt: text('updated_at').notNull().default("(datetime('now'))"),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`),
 });
 
 export const chatMessages = sqliteTable('chat_messages', {
@@ -35,7 +36,7 @@ export const chatMessages = sqliteTable('chat_messages', {
   conversationId: integer('conversation_id').notNull().references(() => chatConversations.id),
   role: text('role', { enum: ['user', 'assistant'] }).notNull(),
   content: text('content').notNull(),
-  createdAt: text('created_at').notNull().default("(datetime('now'))"),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
 
 export const agentReports = sqliteTable('agent_reports', {
@@ -43,7 +44,7 @@ export const agentReports = sqliteTable('agent_reports', {
   date: text('date').notNull(),
   agentType: text('agent_type', { enum: ['analyst', 'strategist', 'coach'] }).notNull(),
   content: text('content').notNull(), // JSON string
-  createdAt: text('created_at').notNull().default("(datetime('now'))"),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
 
 export const morningBriefs = sqliteTable('morning_briefs', {
@@ -51,7 +52,7 @@ export const morningBriefs = sqliteTable('morning_briefs', {
   date: text('date').notNull().unique(),
   content: text('content').notNull(), // Markdown
   metrics: text('metrics'), // JSON string
-  createdAt: text('created_at').notNull().default("(datetime('now'))"),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
 
 export const intelItems = sqliteTable('intel_items', {
@@ -63,7 +64,7 @@ export const intelItems = sqliteTable('intel_items', {
   url: text('url'),
   source: text('source'),
   relevance: real('relevance'), // 0-1
-  createdAt: text('created_at').notNull().default("(datetime('now'))"),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
 
 export const knowledgeNodes = sqliteTable('knowledge_nodes', {
@@ -86,7 +87,7 @@ export const goals = sqliteTable('goals', {
   unit: text('unit').default('分钟'),
   completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
   dueDate: text('due_date'),
-  createdAt: text('created_at').notNull().default("(datetime('now'))"),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
 
 export type StudySession = typeof studySessions.$inferSelect;

@@ -34,16 +34,20 @@ export function useChatStream(conversationId: number | null) {
     }
   }, [conversationId, loadConversation]);
 
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
   const sendMessage = useCallback(
     async (content: string) => {
       if (isStreaming) return;
 
       const userMessage: Message = { role: 'user', content };
-      setMessages((prev) => [...prev, userMessage]);
-      setIsStreaming(true);
-
       const assistantMessage: Message = { role: 'assistant', content: '' };
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, userMessage, assistantMessage]);
+      setIsStreaming(true);
 
       try {
         abortRef.current = new AbortController();
@@ -63,45 +67,64 @@ export function useChatStream(conversationId: number | null) {
 
         const decoder = new TextDecoder();
         let accumulated = '';
+        let buffer = '';
 
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            buffer += decoder.decode();
+          } else {
+            buffer += decoder.decode(value, { stream: true });
+          }
 
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
+          let boundaryIndex = buffer.indexOf('\n\n');
+          while (boundaryIndex !== -1) {
+            const rawEvent = buffer.slice(0, boundaryIndex);
+            buffer = buffer.slice(boundaryIndex + 2);
+            boundaryIndex = buffer.indexOf('\n\n');
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') continue;
+            const dataLines = rawEvent
+              .split('\n')
+              .filter((line) => line.startsWith('data:'))
+              .map((line) => line.slice(5).trimStart());
 
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.token) {
-                  accumulated += parsed.token;
-                  setMessages((prev) => {
-                    const updated = [...prev];
-                    updated[updated.length - 1] = {
-                      role: 'assistant',
-                      content: accumulated,
-                    };
-                    return updated;
-                  });
-                }
-                if (parsed.conversationId) {
-                  // New conversation was created, return the ID via event
-                  window.dispatchEvent(
-                    new CustomEvent('chat:new-conversation', {
-                      detail: { conversationId: parsed.conversationId },
-                    })
-                  );
-                }
-              } catch {
-                // Skip malformed JSON lines
+            if (dataLines.length === 0) {
+              continue;
+            }
+
+            const data = dataLines.join('\n');
+            if (data === '[DONE]') {
+              continue;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+
+              if (typeof parsed.token === 'string') {
+                accumulated += parsed.token;
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = {
+                    role: 'assistant',
+                    content: accumulated,
+                  };
+                  return updated;
+                });
               }
+
+              if (typeof parsed.conversationId === 'number') {
+                window.dispatchEvent(
+                  new CustomEvent('chat:new-conversation', {
+                    detail: { conversationId: parsed.conversationId },
+                  })
+                );
+              }
+            } catch {
+              // Skip malformed JSON lines
             }
           }
+
+          if (done) break;
         }
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {

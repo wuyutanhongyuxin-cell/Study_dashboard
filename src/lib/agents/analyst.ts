@@ -3,9 +3,16 @@ import { db } from '@/lib/db';
 import { studySessions, dailyProgress } from '@/lib/db/schema';
 import { desc, gte } from 'drizzle-orm';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+function getClient() {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error('ANTHROPIC_API_KEY is not configured');
+  }
+  return new Anthropic({ apiKey });
+}
 
 export async function runAnalyst() {
+  const client = getClient();
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const dateStr = sevenDaysAgo.toISOString().slice(0, 10);
