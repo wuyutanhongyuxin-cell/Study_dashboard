@@ -27,8 +27,9 @@ export async function POST(request: NextRequest) {
     type,
     subject: subject || null,
     targetValue: targetValue || null,
-    unit: unit || '分钟',
+    unit: unit || 'minutes',
     dueDate: dueDate || null,
+    createdAt: new Date().toISOString(),
   });
 
   return NextResponse.json({ success: true, id: result.lastInsertRowid });

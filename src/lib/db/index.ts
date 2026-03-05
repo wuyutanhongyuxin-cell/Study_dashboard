@@ -1,8 +1,8 @@
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
 
 const dataDir = path.join(process.cwd(), 'data');
 if (!fs.existsSync(dataDir)) {
@@ -16,7 +16,7 @@ sqlite.pragma('foreign_keys = ON');
 
 export const db = drizzle(sqlite, { schema });
 
-// Create tables if not exist
+// Create tables if not exist.
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS study_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,7 +43,7 @@ sqlite.exec(`
 
   CREATE TABLE IF NOT EXISTS chat_conversations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL DEFAULT '新对话',
+    title TEXT NOT NULL DEFAULT 'New Chat',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
@@ -101,9 +101,90 @@ sqlite.exec(`
     subject TEXT,
     target_value INTEGER,
     current_value INTEGER NOT NULL DEFAULT 0,
-    unit TEXT DEFAULT '分钟',
+    unit TEXT DEFAULT 'minutes',
     completed INTEGER NOT NULL DEFAULT 0,
     due_date TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 `);
+
+function runStartupMigrations() {
+  const currentVersion = Number(sqlite.pragma('user_version', { simple: true }) || 0);
+
+  if (currentVersion >= 1) {
+    return;
+  }
+
+  const migrateToV1 = sqlite.transaction(() => {
+    // Repair rows polluted by old string defaults.
+    sqlite
+      .prepare("UPDATE study_sessions SET created_at = datetime('now') WHERE created_at = '(datetime(''now''))'")
+      .run();
+    sqlite
+      .prepare("UPDATE chat_conversations SET created_at = datetime('now') WHERE created_at = '(datetime(''now''))'")
+      .run();
+    sqlite
+      .prepare("UPDATE chat_conversations SET updated_at = datetime('now') WHERE updated_at = '(datetime(''now''))'")
+      .run();
+    sqlite
+      .prepare("UPDATE chat_messages SET created_at = datetime('now') WHERE created_at = '(datetime(''now''))'")
+      .run();
+    sqlite
+      .prepare("UPDATE agent_reports SET created_at = datetime('now') WHERE created_at = '(datetime(''now''))'")
+      .run();
+    sqlite
+      .prepare("UPDATE morning_briefs SET created_at = datetime('now') WHERE created_at = '(datetime(''now''))'")
+      .run();
+    sqlite
+      .prepare("UPDATE intel_items SET created_at = datetime('now') WHERE created_at = '(datetime(''now''))'")
+      .run();
+    sqlite
+      .prepare("UPDATE goals SET created_at = datetime('now') WHERE created_at = '(datetime(''now''))'")
+      .run();
+
+    // Keep a single row per (date, title).
+    sqlite
+      .prepare(`
+        DELETE FROM intel_items
+        WHERE EXISTS (
+          SELECT 1
+          FROM intel_items older
+          WHERE older.date = intel_items.date
+            AND older.title = intel_items.title
+            AND older.id < intel_items.id
+        );
+      `)
+      .run();
+
+    // Keep a single row per (date, agent_type).
+    sqlite
+      .prepare(`
+        DELETE FROM agent_reports
+        WHERE EXISTS (
+          SELECT 1
+          FROM agent_reports older
+          WHERE older.date = agent_reports.date
+            AND older.agent_type = agent_reports.agent_type
+            AND older.id < agent_reports.id
+        );
+      `)
+      .run();
+
+    sqlite
+      .prepare(
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_intel_items_date_title ON intel_items(date, title);'
+      )
+      .run();
+    sqlite
+      .prepare(
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_reports_date_agent_type ON agent_reports(date, agent_type);'
+      )
+      .run();
+
+    sqlite.pragma('user_version = 1');
+  });
+
+  migrateToV1();
+}
+
+runStartupMigrations();

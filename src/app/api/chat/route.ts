@@ -5,6 +5,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { db } from '@/lib/db';
 import { chatConversations, chatMessages } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { validateAnthropicApiKey } from '@/lib/anthropic/auth';
+import { isAnthropicAuthError } from '@/lib/anthropic/errors';
 
 const SYSTEM_PROMPT = `你是 Desheng 的考研 AI 督学助手。Desheng 是上海交通大学日语系本科生，目标跨考集成电路学院 085400 电子信息专硕。考试科目：政治、英语一、数学一、874电子信息专业综合。请用中文回答，数学公式用 LaTeX 格式（$..$ 行内，$$...$$ 行间）。`;
 
@@ -27,7 +29,20 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    try {
+      await validateAnthropicApiKey(apiKey);
+    } catch (error) {
+      if (isAnthropicAuthError(error)) {
+        return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY is invalid' }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      throw error;
+    }
+
     let convId = conversationId;
+    const now = new Date().toISOString();
 
     // Create conversation if none provided
     if (!convId) {
@@ -35,7 +50,7 @@ export async function POST(req: NextRequest) {
         message.length > 30 ? message.slice(0, 30) + '...' : message;
       const [newConv] = await db
         .insert(chatConversations)
-        .values({ title })
+        .values({ title, createdAt: now, updatedAt: now })
         .returning();
       convId = newConv.id;
     } else {
@@ -51,6 +66,7 @@ export async function POST(req: NextRequest) {
       conversationId: convId,
       role: 'user',
       content: message,
+      createdAt: now,
     });
 
     // Load conversation history for context
@@ -87,6 +103,7 @@ export async function POST(req: NextRequest) {
                 conversationId: convId,
                 role: 'assistant',
                 content: assistantText,
+                createdAt: new Date().toISOString(),
               });
             } catch (dbError) {
               console.error('Failed to save assistant message:', dbError);
@@ -129,7 +146,9 @@ export async function POST(req: NextRequest) {
 
           messageStream.on('error', async (error) => {
             console.error('Anthropic stream error:', error);
-            const fallback = '\n\n[请求出错，请重试]';
+            const fallback = isAnthropicAuthError(error)
+              ? '\n\n[AI 服务鉴权失败，请联系管理员更新密钥]'
+              : '\n\n[请求出错，请重试]';
             fullResponse = fullResponse || fallback;
             controller.enqueue(
               encoder.encode(

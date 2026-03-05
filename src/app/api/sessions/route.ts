@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
 
   const durationMinutes = Math.floor(parsedDuration);
   const dateStr = startTime.slice(0, 10); // YYYY-MM-DD
+  const createdAt = new Date().toISOString();
 
   const result = await db.transaction(async (tx) => {
     const sessionInsert = await tx.insert(studySessions).values({
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
       startTime,
       endTime: endTime ?? null,
       duration: durationMinutes,
+      createdAt,
     });
 
     await tx

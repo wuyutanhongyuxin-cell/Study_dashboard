@@ -26,6 +26,7 @@ export class CrawlerService {
         continue;
       }
 
+      const createdAt = new Date().toISOString();
       await db.insert(intelItems).values({
         date: today,
         category: item.category as 'policy' | 'experience' | 'resource' | 'news',
@@ -34,6 +35,9 @@ export class CrawlerService {
         url: item.url,
         source: item.source,
         relevance: item.relevance,
+        createdAt,
+      }).onConflictDoNothing({
+        target: [intelItems.date, intelItems.title],
       });
       existingTitles.add(item.title);
     }

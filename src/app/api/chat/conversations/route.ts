@@ -39,11 +39,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const title = body.title || '新对话';
+    const title = body.title || 'New Chat';
+    const now = new Date().toISOString();
 
     const [conversation] = await db
       .insert(chatConversations)
-      .values({ title })
+      .values({ title, createdAt: now, updatedAt: now })
       .returning();
 
     return Response.json(conversation);

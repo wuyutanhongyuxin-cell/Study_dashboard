@@ -26,7 +26,7 @@ export const dailyProgress = sqliteTable('daily_progress', {
 
 export const chatConversations = sqliteTable('chat_conversations', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  title: text('title').notNull().default('新对话'),
+  title: text('title').notNull().default('New Chat'),
   createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
   updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`),
 });
@@ -84,7 +84,7 @@ export const goals = sqliteTable('goals', {
   subject: text('subject'),
   targetValue: integer('target_value'),
   currentValue: integer('current_value').notNull().default(0),
-  unit: text('unit').default('分钟'),
+  unit: text('unit').default('minutes'),
   completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
   dueDate: text('due_date'),
   createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),

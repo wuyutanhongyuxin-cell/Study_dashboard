@@ -87,6 +87,7 @@ ${coachReport ? `### 教练反馈\n${coachReport.content}` : '暂无教练反馈
       date,
       content,
       metrics: JSON.stringify(metrics),
+      createdAt: new Date().toISOString(),
     })
     .onConflictDoUpdate({
       target: morningBriefs.date,

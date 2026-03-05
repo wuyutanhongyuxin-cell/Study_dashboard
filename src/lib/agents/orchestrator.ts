@@ -16,24 +16,38 @@ export async function runOrchestrator() {
     runCoach(analysisData),
   ]);
 
-  // Step 3: Save all reports to DB
-  await db.insert(agentReports).values([
+  // Step 3: Save all reports to DB (idempotent per day+agent).
+  const now = new Date().toISOString();
+  const reports = [
     {
       date: today,
-      agentType: 'analyst',
+      agentType: 'analyst' as const,
       content: JSON.stringify(analysisData),
     },
     {
       date: today,
-      agentType: 'strategist',
+      agentType: 'strategist' as const,
       content: JSON.stringify(strategyData),
     },
     {
       date: today,
-      agentType: 'coach',
+      agentType: 'coach' as const,
       content: typeof coachMessage === 'string' ? coachMessage : JSON.stringify(coachMessage),
     },
-  ]);
+  ];
+
+  for (const report of reports) {
+    await db
+      .insert(agentReports)
+      .values({ ...report, createdAt: now })
+      .onConflictDoUpdate({
+        target: [agentReports.date, agentReports.agentType],
+        set: {
+          content: report.content,
+          createdAt: now,
+        },
+      });
+  }
 
   return {
     analyst: analysisData,
