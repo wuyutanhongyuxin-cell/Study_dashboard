@@ -9,6 +9,7 @@ import {
   Newspaper,
   Search,
   GitBranch,
+  FolderOpen,
   GraduationCap,
   ChevronLeft,
 } from 'lucide-react';
@@ -25,6 +26,7 @@ const iconMap = {
   Newspaper,
   Search,
   GitBranch,
+  FolderOpen,
 } as const;
 
 const navItems = [
@@ -34,6 +36,7 @@ const navItems = [
   { id: 'briefs', label: '每日晨报', icon: 'Newspaper', href: '/briefs' },
   { id: 'intel', label: '信息聚合', icon: 'Search', href: '/intel' },
   { id: 'knowledge', label: '知识树', icon: 'GitBranch', href: '/knowledge' },
+  { id: 'resources', label: '学习资料', icon: 'FolderOpen', href: '/resources' },
 ] as const;
 
 function SidebarContent() {

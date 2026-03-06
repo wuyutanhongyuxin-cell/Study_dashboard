@@ -99,3 +99,21 @@ export type MorningBrief = typeof morningBriefs.$inferSelect;
 export type IntelItem = typeof intelItems.$inferSelect;
 export type KnowledgeNode = typeof knowledgeNodes.$inferSelect;
 export type Goal = typeof goals.$inferSelect;
+
+// 第10张表：学习资料
+export const resources = sqliteTable('resources', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  title: text('title').notNull(),
+  originalName: text('original_name').notNull(),
+  storagePath: text('storage_path').notNull(),
+  fileSize: integer('file_size').notNull(),
+  mimeType: text('mime_type').notNull(),
+  fileExt: text('file_ext').notNull(),
+  subject: text('subject').notNull().default('general'),
+  resourceType: text('resource_type').notNull().default('other'),
+  uploader: text('uploader').notNull().default('匿名'),
+  downloadCount: integer('download_count').notNull().default(0),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+});
+
+export type Resource = typeof resources.$inferSelect;
