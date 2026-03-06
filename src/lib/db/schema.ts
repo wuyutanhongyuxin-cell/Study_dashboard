@@ -1,12 +1,16 @@
 import { sql } from 'drizzle-orm';
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import {
+  RESOURCE_SUBJECT_VALUES,
+  RESOURCE_TYPE_VALUES,
+} from '@/lib/resources/config';
 
 export const studySessions = sqliteTable('study_sessions', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   subject: text('subject').notNull(),
   startTime: text('start_time').notNull(),
   endTime: text('end_time'),
-  duration: integer('duration'), // minutes
+  duration: integer('duration'),
   notes: text('notes'),
   createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
@@ -19,8 +23,8 @@ export const dailyProgress = sqliteTable('daily_progress', {
   mathMinutes: integer('math_minutes').notNull().default(0),
   majorMinutes: integer('major_minutes').notNull().default(0),
   totalMinutes: integer('total_minutes').notNull().default(0),
-  mood: integer('mood'), // 1-5
-  efficiency: integer('efficiency'), // 1-5
+  mood: integer('mood'),
+  efficiency: integer('efficiency'),
   summary: text('summary'),
 });
 
@@ -43,15 +47,15 @@ export const agentReports = sqliteTable('agent_reports', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   date: text('date').notNull(),
   agentType: text('agent_type', { enum: ['analyst', 'strategist', 'coach'] }).notNull(),
-  content: text('content').notNull(), // JSON string
+  content: text('content').notNull(),
   createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
 
 export const morningBriefs = sqliteTable('morning_briefs', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   date: text('date').notNull().unique(),
-  content: text('content').notNull(), // Markdown
-  metrics: text('metrics'), // JSON string
+  content: text('content').notNull(),
+  metrics: text('metrics'),
   createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
 
@@ -63,7 +67,7 @@ export const intelItems = sqliteTable('intel_items', {
   summary: text('summary').notNull(),
   url: text('url'),
   source: text('source'),
-  relevance: real('relevance'), // 0-1
+  relevance: real('relevance'),
   createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
 
@@ -90,6 +94,21 @@ export const goals = sqliteTable('goals', {
   createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
 
+export const resources = sqliteTable('resources', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  title: text('title').notNull(),
+  originalName: text('original_name').notNull(),
+  storagePath: text('storage_path').notNull(),
+  fileSize: integer('file_size').notNull(),
+  mimeType: text('mime_type').notNull(),
+  fileExt: text('file_ext').notNull(),
+  subject: text('subject', { enum: RESOURCE_SUBJECT_VALUES }).notNull().default('general'),
+  resourceType: text('resource_type', { enum: RESOURCE_TYPE_VALUES }).notNull().default('other'),
+  uploader: text('uploader').notNull().default('鍖垮悕'),
+  downloadCount: integer('download_count').notNull().default(0),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+});
+
 export type StudySession = typeof studySessions.$inferSelect;
 export type DailyProgress = typeof dailyProgress.$inferSelect;
 export type ChatConversation = typeof chatConversations.$inferSelect;
@@ -99,21 +118,4 @@ export type MorningBrief = typeof morningBriefs.$inferSelect;
 export type IntelItem = typeof intelItems.$inferSelect;
 export type KnowledgeNode = typeof knowledgeNodes.$inferSelect;
 export type Goal = typeof goals.$inferSelect;
-
-// 第10张表：学习资料
-export const resources = sqliteTable('resources', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  title: text('title').notNull(),
-  originalName: text('original_name').notNull(),
-  storagePath: text('storage_path').notNull(),
-  fileSize: integer('file_size').notNull(),
-  mimeType: text('mime_type').notNull(),
-  fileExt: text('file_ext').notNull(),
-  subject: text('subject').notNull().default('general'),
-  resourceType: text('resource_type').notNull().default('other'),
-  uploader: text('uploader').notNull().default('匿名'),
-  downloadCount: integer('download_count').notNull().default(0),
-  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-});
-
 export type Resource = typeof resources.$inferSelect;
